@@ -707,6 +707,18 @@ def main():
         wait_for_cf_clearance(page, timeout=30)
         time.sleep(random.uniform(1.5, 2.5))
 
+        # Quick check: if cf_challenge_response exists but empty and no visible
+        # widget, the __cf_bm cookie is set — one reload bypasses the challenge.
+        try:
+            res = page.evaluate("() => { return document.querySelector('input[name=\"cf_challenge_response\"]') && document.querySelector('input[name=\"cf_challenge_response\"]').value.length < 10; }")
+            if res:
+                log_step("Challenge residual detected, reload page...")
+                page.reload(wait_until="domcontentloaded", timeout=20000)
+                wait_for_cf_clearance(page, timeout=15)
+                time.sleep(2)
+        except Exception:
+            pass
+
         # ── Step 2: Fill email ────────────────────────────────────────────────
         log_step("Menunggu form signup muncul...")
         form_found = False

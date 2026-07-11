@@ -60,7 +60,7 @@ function CodeBuddyTab() {
   const logsPerPage = 10;
   const logsDismissed = useRef(false);
   const [mounted, setMounted] = useState(false);
-  const [concurrency, setConcurrency] = useState(3);
+  const [concurrency, setConcurrency] = useState(1);
   const [auto9Router, setAuto9Router] = useState(false);
   const [runNow, setRunNow] = useState(false);
   const [addGoogleText, setAddGoogleText] = useState("");
@@ -124,7 +124,7 @@ function CodeBuddyTab() {
       }
 
       const savedConcurrency = localStorage.getItem("automation_concurrency");
-      if (savedConcurrency) setConcurrency(parseInt(savedConcurrency) || 3);
+      if (savedConcurrency) setConcurrency(parseInt(savedConcurrency) || 1);
 
       const savedAutoEmail = localStorage.getItem("automation_auto_email");
       if (savedAutoEmail) setAutoGenerateEmail(savedAutoEmail === "1");

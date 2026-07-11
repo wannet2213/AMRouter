@@ -303,7 +303,7 @@ export async function POST_handler(req, res) {
       if (run_now && createdAccounts.length > 0) {
         const targetIds = createdAccounts.map(a => a.id);
         const jobId = uuidv4();
-        const concurrencyLimit = parseInt(concurrency) || 3;
+        const concurrencyLimit = parseInt(concurrency) || 1;
         await createCodeBuddyJob(jobId, "signup", targetIds.length);
         runCodeBuddySignupJob(jobId, targetIds, concurrencyLimit).catch(console.error);
         response.job_id = jobId;
@@ -384,7 +384,7 @@ export async function POST_handler(req, res) {
 
       if (run_now && targetIds.length > 0) {
         const jobId = uuidv4();
-        const concurrencyLimit = parseInt(concurrency) || 3;
+        const concurrencyLimit = parseInt(concurrency) || 1;
         await createCodeBuddyJob(jobId, "signup", targetIds.length);
         
         // Start background runner async
@@ -397,7 +397,7 @@ export async function POST_handler(req, res) {
 
     // ── Action: Run all pending/failed accounts ─────────────────────
     if (action === "run-all") {
-      const concurrencyLimit = parseInt(body.concurrency) || 3;
+      const concurrencyLimit = parseInt(body.concurrency) || 1;
       const { provider } = body;
       const accounts = await listCodeBuddyAccounts();
       const targetIds = accounts
