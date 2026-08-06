@@ -6,7 +6,7 @@ import { Card, Button, Badge, Toggle, Loading } from "@/shared/components";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 
 export default function AutomationDashboard() {
-  const [activeTab, setActiveTab] = useState("codebuddy"); // codebuddy | ammail
+  const [activeTab, setActiveTab] = useState("codebuddy"); // codebuddy | ammail | grok
 
   const tabBtn = (id, icon, label) => (
     <button
@@ -28,10 +28,12 @@ export default function AutomationDashboard() {
       <div className="flex border-b border-border-subtle pb-px gap-6 flex-wrap">
         {tabBtn("codebuddy", "smart_toy", "Automation")}
         {tabBtn("ammail", "mail", "Ammail Temp Mail")}
+        {tabBtn("grok", "robot_2", "Grok Register")}
       </div>
 
       {activeTab === "codebuddy" && <CodeBuddyTab />}
       {activeTab === "ammail" && <AmmailTab />}
+      {activeTab === "grok" && <GrokTab />}
     </div>
   );
 }
@@ -50,6 +52,7 @@ function CodeBuddyTab() {
     kimi: "Kimi Coding",
     cloudflare: "Cloudflare Workers AI",
     openrouter: "OpenRouter",
+    grok: "Grok (xAI)",
   };
 
   const [accounts, setAccounts] = useState([]);
@@ -570,11 +573,12 @@ function CodeBuddyTab() {
               >
                 <option value="cloudflare">☁️ Cloudflare Workers AI</option>
                 <option value="openrouter">🔑 OpenRouter</option>
+                <option value="grok">🤖 Grok (xAI)</option>
               </select>
             </div>
           </div>
 
-          {(targetProvider === "leonardo" || targetProvider === "weavy" || targetProvider === "cloudflare" || targetProvider === "openrouter") && (
+          {(targetProvider === "leonardo" || targetProvider === "weavy" || targetProvider === "cloudflare" || targetProvider === "openrouter" || targetProvider === "grok") && (
             <div className="pt-1 border-t border-border-subtle">
               <label className="flex items-center gap-2 text-xs text-text-main cursor-pointer">
                 <input
@@ -588,7 +592,7 @@ function CodeBuddyTab() {
             </div>
           )}
 
-          {(targetProvider === "leonardo" || targetProvider === "weavy" || targetProvider === "cloudflare" || targetProvider === "openrouter") && autoGenerateEmail ? (
+          {(targetProvider === "leonardo" || targetProvider === "weavy" || targetProvider === "cloudflare" || targetProvider === "openrouter" || targetProvider === "grok") && autoGenerateEmail ? (
             <div className="space-y-3 pt-2">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs text-text-muted">Count to generate:</span>
@@ -2688,3 +2692,175 @@ function AmmailTab() {
   );
 }
 
+
+// ─────────────────────────────────────────────────────────────────────
+// 3. GROK REGISTRATION COMPONENT (grok-regkit toolkit)
+// ─────────────────────────────────────────────────────────────────────
+
+function GrokTab() {
+  const [count, setCount] = useState(1);
+  const [mode, setMode] = useState("browser");
+  const [proxy, setProxy] = useState("");
+  const [jobs, setJobs] = useState([]);
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [log, setLog] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [autoRefresh, setAutoRefresh] = useState(true);
+
+  const loadJobs = async () => {
+    try {
+      const res = await fetch("/api/automation/grok");
+      const data = await res.json();
+      if (data.jobs) setJobs(data.jobs);
+    } catch (e) { /* ignore */ }
+  };
+
+  useEffect(() => {
+    loadJobs();
+    const iv = setInterval(() => {
+      loadJobs();
+      if (selectedJob) refreshLog(selectedJob);
+    }, 3000);
+    return () => clearInterval(iv);
+  }, [selectedJob]);
+
+  const refreshLog = async (jobId) => {
+    try {
+      const res = await fetch(`/api/automation/grok?job_id=${jobId}&action=log`);
+      const data = await res.json();
+      if (data.log !== undefined) setLog(data.log);
+    } catch (e) { /* ignore */ }
+  };
+
+  const startJob = async () => {
+    setError(""); setBusy(true);
+    try {
+      const res = await fetch("/api/automation/grok", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "start", count, mode, proxy }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || "Gagal start"); setBusy(false); return; }
+      setSelectedJob(data.job_id);
+      setLog("");
+      await loadJobs();
+      setTimeout(() => refreshLog(data.job_id), 1500);
+    } catch (e) {
+      setError(String(e));
+    }
+    setBusy(false);
+  };
+
+  const stopJob = async (jobId) => {
+    try {
+      await fetch("/api/automation/grok", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "stop", job_id: jobId }),
+      });
+    } catch (e) { /* ignore */ }
+  };
+
+  const statusBadge = (st) => {
+    const map = { starting: "yellow", running: "blue", done: "green", stopped: "orange", error: "red" };
+    return <Badge color={map[st] || "gray"}>{st || "unknown"}</Badge>;
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Controls */}
+      <Card title="Grok Registration (xAI/Grok accounts)">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div>
+            <label className="text-xs text-text-muted">Jumlah akun</label>
+            <input
+              type="number" min="1" max="50" value={count}
+              onChange={(e) => setCount(parseInt(e.target.value) || 1)}
+              className="w-full mt-1 px-3 py-2 bg-surface-elevated border border-border-subtle rounded-md text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-text-muted">Mode</label>
+            <select
+              value={mode} onChange={(e) => setMode(e.target.value)}
+              className="w-full mt-1 px-3 py-2 bg-surface-elevated border border-border-subtle rounded-md text-sm"
+            >
+              <option value="browser">Browser (full)</option>
+              <option value="hybrid">Hybrid (protocol)</option>
+            </select>
+          </div>
+          <div className="col-span-2">
+            <label className="text-xs text-text-muted">Proxy (opsional, format host:port atau user:pass@host:port)</label>
+            <input
+              type="text" value={proxy} placeholder="cth: 1.2.3.4:8080"
+              onChange={(e) => setProxy(e.target.value)}
+              className="w-full mt-1 px-3 py-2 bg-surface-elevated border border-border-subtle rounded-md text-sm"
+            />
+          </div>
+        </div>
+        <div className="flex gap-2 mt-4">
+          <Button variant="primary" size="sm" onClick={startJob} disabled={busy}>
+            {busy ? "Memulai..." : "🚀 Start Registration"}
+          </Button>
+        </div>
+        {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+        <p className="text-xs text-text-muted mt-3">
+          Membutuhkan Chromium/DrissionPage di mesin. Email provider dikonfigurasi di grok-regkit/config.json.
+        </p>
+      </Card>
+
+      {/* Jobs list */}
+      <Card title="Job History">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left">
+            <thead className="text-text-muted border-b border-border-subtle">
+              <tr>
+                <th className="py-2 pr-3">Job</th>
+                <th className="py-2 pr-3">Status</th>
+                <th className="py-2 pr-3">Sukses</th>
+                <th className="py-2 pr-3">Gagal</th>
+                <th className="py-2 pr-3">Progress</th>
+                <th className="py-2 pr-3">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {jobs.length === 0 && (
+                <tr><td colSpan="6" className="py-3 text-text-muted">Belum ada job</td></tr>
+              )}
+              {jobs.map((j) => (
+                <tr key={j.job_id} className="border-b border-border-subtle">
+                  <td className="py-2 pr-3 font-mono">{j.job_id?.slice(0, 8)}</td>
+                  <td className="py-2 pr-3">{statusBadge(j.status)}</td>
+                  <td className="py-2 pr-3 text-green-500">{j.success}</td>
+                  <td className="py-2 pr-3 text-red-500">{j.fail}</td>
+                  <td className="py-2 pr-3">{j.progress || 0}%</td>
+                  <td className="py-2 pr-3 flex gap-1">
+                    <Button size="xs" variant="secondary" onClick={() => { setSelectedJob(j.job_id); refreshLog(j.job_id); }}>
+                      Log
+                    </Button>
+                    {(j.status === "running" || j.status === "starting") && (
+                      <Button size="xs" variant="danger" onClick={() => stopJob(j.job_id)}>
+                        Stop
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* Log viewer */}
+      {selectedJob && (
+        <Card title={`Log Job ${selectedJob.slice(0, 8)}`}>
+          <pre className="text-[11px] font-mono bg-surface-elevated rounded-md p-3 max-h-72 overflow-auto whitespace-pre-wrap">
+            {log || "(belum ada output...)"}
+          </pre>
+        </Card>
+      )}
+    </div>
+  );
+}

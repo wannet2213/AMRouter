@@ -71,7 +71,7 @@ export {
 export {
   listCodeBuddyAccounts, getCodeBuddyAccount, insertCodeBuddyAccount,
   bulkDeleteCodeBuddyAccounts, deleteCodeBuddyAccount,
-  markCodeBuddyRunning, markCodeBuddySuccess, markCodeBuddyError, markCanvaEnrolled,
+  markCodeBuddyRunning, markCodeBuddySuccess, markCodeBuddyError, markCanvaEnrolled, updateCodeBuddyAccountEmail,
   createCodeBuddyJob, getCodeBuddyJob, updateCodeBuddyJobStatus, updateCodeBuddyJobResult,
   insertAmmailOtp, findLatestAmmailOtp, markAmmailOtpUsed,
   listAmmailOtps, getAmmailOtp, deleteAmmailOtp, deleteAmmailOtpsBulk,

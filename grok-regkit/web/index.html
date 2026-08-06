@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register Console</title>
+  <style>
+    :root {
+      --bg: #222831;
+      --card: rgba(57, 62, 70, .55);
+      --card-solid: #393E46;
+      --border: rgba(238, 238, 238, .12);
+      --border-strong: rgba(238, 238, 238, .22);
+      --text: #EEEEEE;
+      --muted: rgba(238, 238, 238, .58);
+      --muted-2: rgba(238, 238, 238, .42);
+      --primary: #00ADB5;
+      --primary-hover: #00c6cf;
+      --primary-soft: rgba(0, 173, 181, .16);
+      --ok: #4ade80;
+      --ok-bg: rgba(74, 222, 128, .1);
+      --bad: #f87171;
+      --bad-bg: rgba(248, 113, 113, .12);
+      --soft: rgba(57, 62, 70, .4);
+      --input: rgba(238, 238, 238, .06);
+      --radius: 14px;
+      --radius-lg: 20px;
+      --shadow: 0 8px 32px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(238, 238, 238, .06);
+      --glass-blur: 22px;
+      --font: "Geist Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color-scheme: dark;
+    }
+    :root[data-theme="light"] {
+      --bg: #EEEEEE;
+      --card: rgba(255, 255, 255, .78);
+      --card-solid: #FFFFFF;
+      --border: rgba(34, 40, 49, .12);
+      --border-strong: rgba(34, 40, 49, .24);
+      --text: #222831;
+      --muted: rgba(34, 40, 49, .66);
+      --muted-2: rgba(34, 40, 49, .48);
+      --soft: rgba(57, 62, 70, .08);
+      --input: rgba(34, 40, 49, .06);
+      --shadow: 0 10px 30px rgba(34, 40, 49, .10), inset 0 1px 0 rgba(255, 255, 255, .8);
+      color-scheme: light;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.5;
+      transition: background .2s ease, color .2s ease;
+    }
+    /* liquid aurora backdrop */
+    body::before, body::after {
+      content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    }
+    body::before {
+      background:
+        radial-gradient(55% 45% at 12% 8%, rgba(0, 173, 181, .16), transparent 60%),
+        radial-gradient(45% 40% at 88% 14%, rgba(0, 173, 181, .11), transparent 60%),
+        radial-gradient(70% 55% at 50% 112%, rgba(0, 173, 181, .08), transparent 65%);
+      animation: aurora 14s ease-in-out infinite;
+    }
+    :root[data-theme="light"] body::before {
+      background:
+        radial-gradient(55% 45% at 12% 8%, rgba(0, 173, 181, .13), transparent 60%),
+        radial-gradient(45% 40% at 88% 14%, rgba(0, 173, 181, .08), transparent 60%);
+    }
+    body::after {
+      background: radial-gradient(32% 30% at 30% 60%, rgba(0, 173, 181, .07), transparent 70%);
+      animation: drift 26s ease-in-out infinite alternate;
+    }
+    @keyframes aurora { 0%, 100% { opacity: .7; } 50% { opacity: 1; } }
+    @keyframes drift { from { transform: translate3d(-3%, -2%, 0) rotate(-3deg); } to { transform: translate3d(3%, 2%, 0) rotate(3deg); } }
+    button, input, select { font: inherit; color: inherit; }
+    a { color: inherit; }
+
+    /* glass shell */
+    .section, .soft-box, .metric, .status-chip, .login-card, .toast {
+      background: var(--card);
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+      backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+
+    /* login */
+    .login-overlay {
+      position: fixed; inset: 0; z-index: 50;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(34, 40, 49, .7);
+      -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    }
+    .login-overlay.hidden { display: none; }
+    .login-card {
+      width: min(380px, calc(100vw - 32px));
+      border-radius: var(--radius-lg);
+      padding: 28px 24px;
+      text-align: center;
+    }
+    .login-brand {
+      font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+      color: var(--primary); font-weight: 700; margin-bottom: 8px;
+    }
+    .login-card h1 { font-size: 18px; font-weight: 650; margin-bottom: 6px; }
+    .login-card p { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+    .login-card input {
+      width: 100%; height: 36px; padding: 0 12px; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--input); text-align: center; outline: none;
+    }
+    .login-card input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+    .login-err { min-height: 1.2rem; color: var(--bad); font-size: 12px; margin-top: 8px; }
+
+    .page {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 18px 16px 28px;
+      position: relative; z-index: 1;
+    }
+    /* Embedded under admin top nav — match admin page feel */
+    body.embed-mode {
+      background: var(--bg);
+      min-height: 100%;
+    }
+    body.embed-mode .page {
+      padding: 12px 28px 20px;
+      max-width: 1280px;
+    }
+    body.embed-mode .page-title,
+    body.embed-mode .page-sub { display: none; }
+    body.embed-mode .page-hd {
+      margin-bottom: 12px;
+      align-items: center;
+      justify-content: flex-end;
+    }
+    body.embed-mode .login-overlay {
+      background: rgba(34, 40, 49, .85);
+    }
+
+    /* page header */
+    .page-hd {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 12px; margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .page-title { font-size: 22px; font-weight: 700; line-height: 1.2; letter-spacing: -.02em; }
+    .page-sub { font-size: 13px; color: var(--muted); margin-top: 5px; }
+    .page-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+    .status-chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      height: 32px; padding: 0 12px; border-radius: 999px;
+      color: var(--muted); font-size: 12px; font-weight: 600;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(238, 238, 238, .28); }
+    .dot.run { background: var(--primary); box-shadow: 0 0 0 4px var(--primary-soft), 0 0 12px rgba(0, 173, 181, .6); }
+    .dot.idle { background: rgba(238, 238, 238, .28); }
+
+    .btn {
+      height: 32px; padding: 0 14px; border-radius: 999px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      font-size: 13px; font-weight: 600; border: 1px solid var(--border);
+      background: rgba(238, 238, 238, .06); color: var(--text); cursor: pointer; text-decoration: none;
+      -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+      transition: .12s ease;
+    }
+    .btn:hover:not(:disabled) { background: rgba(238, 238, 238, .12); border-color: var(--border-strong); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #0a1c1e; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); border-color: var(--primary-hover); box-shadow: 0 4px 18px rgba(0, 173, 181, .35); }
+    .btn-danger { background: var(--bad-bg); border-color: rgba(248, 113, 113, .3); color: #fca5a5; }
+    .btn-danger:hover:not(:disabled) { background: rgba(248, 113, 113, .18); }
+    .btn-ghost { background: transparent; }
+    .theme-btn { min-width: 34px; padding: 0 10px; font-size: 16px; }
+
+    /* metric strip */
+    .metrics {
+      display: grid;
+       grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 720px) {
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    .metric {
+      min-height: 76px; padding: 14px 16px;
+      border-radius: var(--radius-lg);
+    }
+    .metric .label {
+      font-size: 11px; color: var(--muted); white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .metric .value {
+      margin-top: 8px; font-size: 24px; font-weight: 650; letter-spacing: -.03em;
+      line-height: 1;
+    }
+    .metric .value.ok { color: var(--ok); }
+    .metric .value.bad { color: var(--bad); }
+    .metric .value.sm { font-size: 16px; padding-top: 4px; }
+    .metric .detail { margin-top: 5px; color: var(--muted-2); font-size: 11px; }
+    .metric.cost { border-color: rgba(0, 173, 181, .35); background: linear-gradient(145deg, var(--card), rgba(0, 173, 181, .10)); }
+    .metric.cost .value { color: var(--primary); }
+
+    /* two-column layout */
+    .layout {
+      display: grid;
+      gap: 20px;
+    }
+    @media (min-width: 1100px) {
+      .layout {
+         grid-template-columns: minmax(0, 1.15fr) minmax(360px, .85fr);
+        align-items: start;
+      }
+      .runtime-col { position: sticky; top: 16px; }
+      body.embed-mode .runtime-col { top: 8px; }
+    }
+
+    /* form section cards */
+    .section {
+      border-radius: var(--radius);
+      padding: 14px 16px;
+    }
+    .section + .section { margin-top: 14px; }
+    .section-head {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 10px; margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: 11px; line-height: 1.25; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--primary); font-weight: 700;
+    }
+    .section-sub {
+      margin-top: 3px; font-size: 12px; line-height: 1.45; color: var(--muted-2);
+      text-transform: none; letter-spacing: 0; font-weight: 400;
+    }
+
+    .form-grid { display: grid; gap: 12px; }
+    @media (min-width: 720px) {
+      .form-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .form-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .span-2, .span-full { grid-column: 1 / -1; }
+    }
+    .field { display: grid; gap: 7px; min-width: 0; }
+    .label { font-size: 12px; color: var(--muted); }
+    .hint { font-size: 12px; color: var(--muted-2); line-height: 1.55; }
+
+    input[type="text"], input[type="password"], input[type="number"], select {
+      width: 100%; height: 36px; padding: 0 11px;
+      border-radius: 10px; border: 1px solid var(--border);
+      background: var(--input); outline: none;
+      min-width: 0;
+      transition: border-color .12s ease, box-shadow .12s ease;
+    }
+    select {
+      appearance: none;
+      -webkit-appearance: none;
+      padding-right: 30px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23EEEEEE' fill-opacity='0.6' d='M3 4.5L6 8l3-3.5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      background-size: 12px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    :root[data-theme="light"] select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23222831' fill-opacity='0.65' d='M3 4.5L6 8l3-3.5'/%3E%3C/svg%3E");
+    }
+    select option { white-space: normal; background: var(--card-solid); }
+    input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+    input:disabled, select:disabled { opacity: .6; background: rgba(238, 238, 238, .03); }
+
+    .check-row {
+      display: flex; align-items: center; gap: 8px;
+      min-height: 36px; font-size: 13px; color: var(--muted);
+    }
+    .check-row:hover { color: var(--text); }
+    .check-row input { width: auto; height: auto; accent-color: var(--primary); }
+
+    .provider-tabs {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      gap: 8px; margin-bottom: 12px;
+    }
+    .provider-tab {
+      height: 36px; border-radius: 12px; border: 1px solid var(--border);
+      background: rgba(238, 238, 238, .04); color: var(--muted); font-size: 13px; font-weight: 650;
+      cursor: pointer;
+      -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+      transition: .12s ease;
+    }
+    .provider-tab:hover { color: var(--text); border-color: var(--border-strong); }
+    .provider-tab.active {
+      color: #0a1c1e; background: var(--primary); border-color: var(--primary);
+      box-shadow: 0 4px 18px rgba(0, 173, 181, .35);
+    }
+    .soft-box {
+      border-radius: var(--radius); padding: 12px; display: grid; gap: 12px;
+    }
+
+    .action-bar {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;
+    }
+    .tips {
+      margin-top: 10px; color: var(--muted); font-size: 12px; line-height: 1.6;
+      display: grid; gap: 2px;
+    }
+    .tips p { margin: 0; }
+
+    /* runtime */
+    .log-section { display: flex; flex-direction: column; min-height: 420px; }
+    .log-toolbar {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 10px; margin-bottom: 10px;
+    }
+    .log-box {
+      flex: 1; min-height: 320px; max-height: min(58vh, 560px);
+      overflow: auto; border-radius: var(--radius);
+       background: rgba(17, 22, 28, .72);
+      -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      padding: 12px; font-family: var(--mono); font-size: 12px; line-height: 1.5;
+    }
+    :root[data-theme="light"] .log-box { background: #222831; }
+    body.embed-mode .log-box { max-height: min(52vh, 520px); }
+    .log-line { color: rgba(238, 238, 238, .82); white-space: pre-wrap; word-break: break-word; margin-bottom: 2px; }
+    .log-line.ok { color: #6ee7b7; }
+    .log-line.err { color: #fca5a5; }
+    .log-line.info { color: #7dd3fc; }
+    .file-line { color: var(--muted); font-size: 12px; margin-top: 10px; }
+
+    .toast {
+      position: fixed; right: 16px; bottom: 16px; z-index: 40;
+      color: var(--text);
+      padding: 10px 14px; border-radius: 12px; font-size: 13px;
+      display: none;
+    }
+    .toast.show { display: block; }
+
+    code.inline {
+      font-family: var(--mono); font-size: 11px; color: #9fe8ec;
+      background: rgba(0, 173, 181, .12); padding: 1px 5px; border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-thumb { background: rgba(238, 238, 238, .14); border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
+    ::-webkit-scrollbar-thumb:hover { background-color: rgba(238, 238, 238, .24); }
+    ::-webkit-scrollbar-track { background: transparent; }
+  </style>
+</head>
+<body>
+  <div id="loginOverlay" class="login-overlay">
+    <div class="login-card">
+      <div class="login-brand">Grok Register</div>
+      <h1>Register Console</h1>
+      <p>Enter access password to continue</p>
+      <input id="loginPass" type="password" placeholder="Access password" autofocus />
+      <div style="margin-top:12px">
+        <button id="loginBtn" class="btn btn-primary" type="button" style="width:100%;height:36px;border-radius:8px">Continue</button>
+      </div>
+      <div id="loginErr" class="login-err"></div>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="page-hd">
+      <div>
+        <div class="page-title">Register Account</div>
+        <div class="page-sub">Config is saved automatically before start · successful accounts can be written to the SSO pool</div>
+      </div>
+      <div class="page-actions">
+        <span class="status-chip">
+          <span id="runDot" class="dot idle"></span>
+          <span id="runLabel">Stopped</span>
+        </span>
+        <button id="themeBtn" class="btn theme-btn" type="button" title="Toggle light/dark mode" aria-label="Toggle light/dark mode">☼</button>
+        <button id="saveBtn" class="btn" type="button">Save Config</button>
+        <button id="startBtn" class="btn btn-primary" type="button">Start</button>
+        <button id="stopBtn" class="btn btn-danger" type="button">Stop</button>
+      </div>
+    </div>
+
+    <div class="metrics">
+      <div class="metric"><div class="label">Success</div><div id="mSuccess" class="value ok">0</div></div>
+      <div class="metric"><div class="label">Failed</div><div id="mFail" class="value bad">0</div></div>
+      <div class="metric"><div class="label">Target</div><div id="mTarget" class="value">0</div></div>
+      <div class="metric"><div class="label">Status</div><div id="mState" class="value sm">Idle</div></div>
+      <div class="metric cost"><div class="label">Total biaya email</div><div id="mCost" class="value sm">IDR 0</div><div id="mUnitCost" class="detail">IDR 0 / email</div></div>
+    </div>
+
+    <div class="layout">
+      <div class="config-col">
+        <!-- task parameters -->
+        <div class="section">
+          <div class="section-head">
+            <div>
+              <div class="section-title">Task Parameters</div>
+              <div class="section-sub">Register by count; try 1 first</div>
+            </div>
+          </div>
+          <div class="form-grid two">
+            <div class="field">
+              <div class="label">Register Count</div>
+              <input id="regCount" type="number" min="1" max="1000" value="1" />
+            </div>
+            <div class="field">
+              <div class="label">Register Mode</div>
+              <select id="registerMode" title="Full browser is more stable; hybrid is faster (protocol + short browser)">
+                <option value="browser" selected>Full Browser</option>
+                <option value="hybrid">Hybrid (faster)</option>
+              </select>
+            </div>
+            <div class="field span-2">
+              <div class="label">Proxy Mode</div>
+              <select id="proxyMode">
+                <option value="airport" selected>Airport Mihomo</option>
+                <option value="cliproxy_white">Cliproxy Whitelist</option>
+                <option value="direct">Direct</option>
+                <option value="custom">Custom Proxy URL</option>
+                <option value="whitelist">Username Proxy Group (legacy)</option>
+              </select>
+            </div>
+            <div class="field">
+              <div class="label">Country / Region</div>
+              <select id="proxy_country">
+                <option value="US" selected>US</option>
+                <option value="Rand">Rand (random)</option>
+                <option value="JP">JP</option>
+                <option value="HK">HK</option>
+                <option value="SG">SG</option>
+                <option value="TW">TW</option>
+                <option value="GB">GB</option>
+                <option value="DE">DE</option>
+                <option value="KR">KR</option>
+                <option value="AU">AU</option>
+                <option value="CA">CA</option>
+              </select>
+            </div>
+            <div class="field">
+              <div class="label">Rotation Duration (min)</div>
+              <input id="proxy_duration" type="number" min="1" max="1440" value="10" placeholder="10" />
+            </div>
+            <div class="field span-2">
+              <label class="check-row"><input id="enable_nsfw" type="checkbox" checked /> Try to enable NSFW after successful registration</label>
+              <label class="check-row" style="margin-top:6px"><input id="nsfw_async" type="checkbox" checked /> NSFW in background (recommended, doesn't block next account)</label>
+              <label class="check-row" style="margin-top:6px"><input id="post_success_async" type="checkbox" checked /> CPA background write (recommended)</label>
+              <div class="hint" style="margin-top:6px">Hybrid mode: the browser only collects Castle/Turnstile; sending/verifying codes and final registration go through the protocol. Background still does NSFW / pooling / 4.5 mint.</div>
+            </div>
+            <div class="field span-2">
+              <div class="label">Custom given names (comma-separated, optional)</div>
+              <input id="profile_given_names" type="text" placeholder="e.g. Andi,Budi,Rizky — empty = built-in pool" />
+            </div>
+            <div class="field span-2">
+              <div class="label">Custom family names (comma-separated, optional)</div>
+              <input id="profile_family_names" type="text" placeholder="e.g. Saputra,Pratama,Wijaya — empty = built-in pool" />
+            </div>
+          </div>
+
+          <div id="proxyAirportBox" class="soft-box" style="margin-top:12px">
+            <div class="form-grid two">
+              <div class="field span-2">
+                <div class="label">Airport local HTTP endpoint (Mihomo REGISTER-RESIDENTIAL)</div>
+                <input id="proxy_airport_url" type="text" value="http://127.0.0.1:7893" />
+              </div>
+              <div class="field span-2">
+                <div class="label">Notes</div>
+                <div class="hint">
+                  The subscription is connected to the server's Mihomo <code class="inline">airport</code> provider;
+                  the proxy group <code class="inline">REGISTER-RESIDENTIAL</code> (US nodes) listens on
+                  <code class="inline">7893</code>.
+                  This is not a Cliproxy ip:port; the browser just uses the local HTTP proxy.
+                </div>
+              </div>
+            </div>
+            <div class="action-bar">
+              <button id="testProxyBtnAirport" class="btn" type="button">Test Airport Exit</button>
+            </div>
+          </div>
+
+          <div id="proxyCliproxyBox" class="soft-box" style="display:none;margin-top:12px">
+            <div class="form-grid two">
+              <div class="field span-2">
+                <div class="label">Cliproxy Whitelist API</div>
+                <input id="proxy_api_url" type="text" value="https://api.cliproxy.io/white/api" />
+              </div>
+              <div class="field">
+                <div class="label">Count per batch (num)</div>
+                <input id="proxy_api_num" type="number" min="1" max="20" value="5" />
+              </div>
+              <div class="field">
+                <div class="label">Return format</div>
+                <select id="proxy_api_format">
+                  <option value="n" selected>n (newline)</option>
+                  <option value="rn">rn (\r\n)</option>
+                </select>
+              </div>
+              <div class="field span-2">
+                <div class="label">IP quality API (IPPure)</div>
+                <input id="proxy_quality_api" type="text" value="https://my.ippure.com/v1/info" />
+              </div>
+              <div class="field">
+                <div class="label">Max fraud score</div>
+                <input id="proxy_max_fraud_score" type="number" min="0" max="100" value="40" />
+              </div>
+              <div class="field">
+                <div class="label">Quality check batch count</div>
+                <input id="proxy_quality_max_tries" type="number" min="1" max="20" value="8" />
+              </div>
+              <div class="field span-2">
+                <label class="check-row"><input id="proxy_quality_check" type="checkbox" checked disabled /> Enable quality check (forced on by server)</label>
+                <label class="check-row"><input id="proxy_check_entry_host" type="checkbox" /> Note entry gateway IP (log only, not blocked; Cliproxy entry is often Zenlayer)</label>
+                <label class="check-row"><input id="proxy_check_exit_ippure" type="checkbox" checked disabled /> Exit IPPure check (forced: real residential/fraud score is here)</label>
+                <label class="check-row"><input id="proxy_require_residential" type="checkbox" checked /> Exit must be a residential IP</label>
+                <label class="check-row"><input id="proxy_require_country_match" type="checkbox" checked /> Exit country must match (US recommended, avoid Rand)</label>
+                <label class="check-row"><input id="proxy_reject_datacenter_org" type="checkbox" checked /> Reject datacenter/cloud ASN on exit</label>
+                <p class="hint" style="margin-top:6px">Cliproxy white returns <code class="inline">107.151.x.x:port</code>, which is a shared entry gateway; different ports on the same gateway are usually different residential exits (e.g. Spectrum / WideOpenWest). Quality is determined by the exit IPPure.</p>
+              </div>
+              <div class="field span-2">
+                <div class="label">Preview request URL</div>
+                <div id="proxyPreview" class="hint" style="font-family:var(--mono);word-break:break-all">—</div>
+              </div>
+            </div>
+            <div class="action-bar">
+              <button id="testProxyBtn" class="btn" type="button">Test Fetch + Quality Check</button>
+            </div>
+            <div class="tips" style="margin-top:8px">
+              <p>· <b>Entry</b>: the host returned by Cliproxy is usually a datacenter gateway (Zenlayer); this is normal and doesn't mean the exit is datacenter.</p>
+              <p>· <b>Exit</b>: IPPure is reached through this port; requires residential, matching country, and not-too-high fraud.</p>
+              <p>· When using a whitelist proxy, add your machine/server exit IP to the provider whitelist.</p>
+            </div>
+          </div>
+
+          <div id="proxyCustomBox" class="soft-box" style="display:none;margin-top:12px">
+            <div class="field">
+              <div class="label">Proxy URL</div>
+              <input id="proxy" type="text" placeholder="http://user:pass@host:port" />
+            </div>
+          </div>
+
+          <div id="proxyGroupBox" class="soft-box" style="display:none;margin-top:12px">
+            <div class="form-grid two">
+              <div class="field">
+                <div class="label">Proxy host</div>
+                <input id="proxy_host" type="text" placeholder="gate.example.com" />
+              </div>
+              <div class="field">
+                <div class="label">Port</div>
+                <input id="proxy_port" type="text" placeholder="1000" />
+              </div>
+              <div class="field">
+                <div class="label">Username (prefix)</div>
+                <input id="proxy_user" type="text" placeholder="your-user" />
+              </div>
+              <div class="field">
+                <div class="label">Password</div>
+                <input id="proxy_pass" type="password" autocomplete="off" />
+              </div>
+              <div class="field">
+                <div class="label">Delimiter</div>
+                <input id="proxy_delimiter" type="text" value="-" placeholder="-" maxlength="5" />
+              </div>
+              <div class="field">
+                <div class="label">Session ID (optional)</div>
+                <input id="proxy_session" type="text" placeholder="Leave empty to auto-generate" />
+              </div>
+              <div class="field span-2">
+                <div class="label">Username template</div>
+                <input id="proxy_user_template" type="text" value="{user}{delimiter}region{delimiter}{country}" />
+              </div>
+            </div>
+          </div>
+
+          <div class="tips">
+            <p>· Clicking Start saves the current config first, then starts the task.</p>
+          </div>
+        </div>
+
+        <!-- mail source -->
+        <div class="section">
+          <div class="section-head">
+            <div>
+              <div class="section-title">Mail Source</div>
+              <div class="section-sub">Enable only one; switch tabs to fill the relevant parameters</div>
+            </div>
+          </div>
+          <div class="provider-tabs" id="mailProviderTabs"></div>
+          <input type="hidden" id="email_provider" value="cloudflare" />
+          <div id="mailPanels"></div>
+        </div>
+
+        <!-- 9router push -->
+        <div class="section">
+          <div class="section-head">
+            <div>
+              <div class="section-title">9router</div>
+              <div class="section-sub">Push minted accounts to 9router after successful registration</div>
+            </div>
+          </div>
+          <div class="form-grid two">
+            <label class="check-row"><input id="nine_router_enabled" type="checkbox" /> Push minted accounts to 9router</label>
+            <div class="field">
+              <div class="label">Push mode</div>
+              <select id="nine_router_push_mode">
+                <option value="device">device (grok-cli, refresh token — persistent)</option>
+                <option value="token">token (xai api-key — 6h)</option>
+              </select>
+            </div>
+            <div class="field">
+              <div class="label">9router base URL</div>
+              <input id="nine_router_base" type="text" placeholder="http://host:20128" />
+            </div>
+            <div class="field">
+              <div class="label">9router password (dashboard, optional)</div>
+              <input id="nine_router_password" type="password" autocomplete="off" placeholder="Required only if Require Login is on" />
+            </div>
+          </div>
+          <div class="action-bar">
+            <button type="button" class="btn" onclick="testNineRouter()">Test 9router connection</button>
+            <span id="nine_router_test_result" style="font-size:13px;font-weight:600"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="runtime-col">
+        <div class="section log-section">
+          <div class="log-toolbar">
+            <div>
+              <div class="section-title">Run Log</div>
+              <div class="section-sub">Live registration output</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button id="clearLogBtn" class="btn btn-ghost" type="button">Clear</button>
+              <button id="listBtn" class="btn" type="button">Account Files</button>
+              <button id="dlBtn" class="btn" type="button">Download Accounts</button>
+            </div>
+          </div>
+          <div id="term" class="log-box"></div>
+          <div id="lastFile" class="file-line">Account file: —</div>
+          <div class="tips">
+            <p>· Click Stop to interrupt a running task.</p>
+            <p>· Successful accounts are written to <code class="inline">accounts_*.txt</code> and pooled per config.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const AUTH_KEY = 'grok_reg_auth_key';
+    let authKey = localStorage.getItem(AUTH_KEY) || '';
+    let pollTimer = null;
+    let logTimer = null;
+    let knownLogLines = new Set();
+    let running = false;
+
+    const $ = (id) => document.getElementById(id);
+
+    function toast(msg) {
+      const el = $('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => el.classList.remove('show'), 2200);
+    }
+
+    function headers(json = false) {
+      const h = {};
+      if (json) h['Content-Type'] = 'application/json';
+      if (authKey) h['X-Access-Key'] = authKey;
+      return h;
+    }
+
+    function appendLog(line) {
+      if (!line || knownLogLines.has(line)) return;
+      knownLogLines.add(line);
+      if (knownLogLines.size > 4000) knownLogLines = new Set(Array.from(knownLogLines).slice(-2000));
+      const el = document.createElement('div');
+      el.className = 'log-line';
+      if (/\[-\]|\[!\]|fail|error|Error/.test(line)) el.classList.add('err');
+      else if (/\[\+\]|success|Success/.test(line)) el.classList.add('ok');
+      else if (/\[\*\]/.test(line)) el.classList.add('info');
+      el.textContent = line;
+      const term = $('term');
+      term.appendChild(el);
+      term.scrollTop = term.scrollHeight;
+    }
+
+    // ── Multi-provider registry ────────────────────────────────────────────
+    // Drop in a new provider by pushing one entry here: key (email_provider
+    // value), label, and a list of fields. Fields are rendered + read + saved
+    // automatically, so the backend must accept/propagate the same config keys.
+    const MAIL_PROVIDERS = [
+      {
+        key: 'cloudflare',
+        label: 'Cloudflare',
+        fields: [
+          { id: 'cloudflare_api_base', label: 'API base URL', type: 'text', span: 2, placeholder: 'https://your-worker-api-domain' },
+          { id: 'defaultDomains', label: 'Mail domain', type: 'text', placeholder: 'mail.example.com' },
+          { id: 'cloudflare_auth_mode', label: 'Auth mode', type: 'select', options: [
+            ['none', 'none (anonymous, default)'],
+            ['x-admin-auth', 'x-admin-auth (admin)'],
+            ['bearer', 'bearer'],
+            ['x-api-key', 'x-api-key'],
+            ['query-key', 'query-key'],
+          ]},
+          { id: 'cloudflare_api_key', label: 'API key / admin password (may be empty for anonymous)', type: 'password', span: 2, placeholder: 'Fill only in admin mode' },
+        ],
+      },
+      {
+        key: 'litensi',
+        label: 'Litensi',
+        fields: [
+          { id: 'litensi_api_id', label: 'API ID', type: 'text', placeholder: 'e.g. 3207' },
+          { id: 'litensi_api_key', label: 'API Key', type: 'password', placeholder: 'Required' },
+          { id: 'litensi_zone', label: 'Zone (optional, auto-pick if empty)', type: 'text', placeholder: 'e.g. gmail.com' },
+          { id: 'litensi_site', label: 'Site (email sender domain)', type: 'text', placeholder: 'e.g. x.ai' },
+        ],
+        extra: 'litPricesBox',
+      },
+    ];
+
+    function litPricesBox() {
+      return (
+        '<div class="field" style="margin-top:12px">' +
+        '<button type="button" class="btn" onclick="checkLitensiPrices()">Check available zones / prices</button>' +
+        '</div>' +
+        '<div id="litensi_prices_box" style="display:none;margin-top:10px">' +
+        '<div id="litensi_prices_list" style="max-height:220px;overflow:auto;font-size:12px"></div>' +
+        '</div>'
+      );
+    }
+
+    function providerFieldEl(f) {
+      if (f.type === 'select') {
+        const sel = document.createElement('select');
+        sel.id = f.id;
+        (f.options || []).forEach(([v, t]) => {
+          const o = document.createElement('option');
+          o.value = v; o.textContent = t;
+          sel.appendChild(o);
+        });
+        return sel;
+      }
+      const input = document.createElement('input');
+      input.type = f.type === 'password' ? 'password' : (f.type === 'number' ? 'number' : 'text');
+      input.id = f.id;
+      if (f.type === 'password') input.autocomplete = 'off';
+      if (f.placeholder) input.placeholder = f.placeholder;
+      return input;
+    }
+
+    function renderMailProviders() {
+      const tabs = $('mailProviderTabs');
+      const panels = $('mailPanels');
+      tabs.innerHTML = '';
+      panels.innerHTML = '';
+      MAIL_PROVIDERS.forEach((p) => {
+        const tab = document.createElement('button');
+        tab.type = 'button';
+        tab.className = 'provider-tab';
+        tab.dataset.p = p.key;
+        tab.textContent = p.label;
+        tab.addEventListener('click', () => setProvider(p.key));
+        tabs.appendChild(tab);
+
+        const panel = document.createElement('div');
+        panel.id = 'panel-' + p.key;
+        panel.className = 'soft-box';
+        panel.style.display = 'none';
+        const grid = document.createElement('div');
+        grid.className = 'form-grid two';
+        p.fields.forEach((f) => {
+          const field = document.createElement('div');
+          field.className = 'field' + (f.span === 2 ? ' span-2' : '');
+          const label = document.createElement('div');
+          label.className = 'label';
+          label.textContent = f.label;
+          field.appendChild(label);
+          field.appendChild(providerFieldEl(f));
+          if (f.showWhen) {
+            field.style.display = 'none';
+            const dep = $(f.showWhen.field);
+            if (dep) {
+              const sync = () => {
+                field.style.display = String(dep.value) === String(f.showWhen.value) ? '' : 'none';
+              };
+              sync();
+              dep.addEventListener('change', sync);
+            }
+          }
+          grid.appendChild(field);
+        });
+        panel.appendChild(grid);
+        if (p.extra && typeof window[p.extra] === 'function') {
+          panel.insertAdjacentHTML('beforeend', window[p.extra]());
+        }
+        panels.appendChild(panel);
+      });
+      setProvider($('email_provider').value || MAIL_PROVIDERS[0].key);
+    }
+
+    function setProvider(p) {
+      if (!p) p = $('email_provider').value || (MAIL_PROVIDERS[0] && MAIL_PROVIDERS[0].key);
+      $('email_provider').value = p;
+      document.querySelectorAll('.provider-tab').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.p === p);
+      });
+      MAIL_PROVIDERS.forEach((prov) => {
+        const panel = $('panel-' + prov.key);
+        if (panel) panel.style.display = prov.key === p ? 'grid' : 'none';
+      });
+    }
+
+    async function checkLitensiPrices() {
+      const site = $('litensi_site').value.trim();
+      if (!$('litensi_api_id').value.trim() || !$('litensi_api_key').value.trim()) {
+        appendLog('[!] Litensi: fill in API ID and API Key first');
+        return;
+      }
+      await saveConfig(true);
+      const box = $('litensi_prices_box');
+      const list = $('litensi_prices_list');
+      box.style.display = 'block';
+      list.textContent = 'Checking prices...';
+      try {
+        const r = await fetch('/api/mail/litensi-prices', { method: 'POST', headers: headers() });
+        const data = await r.json();
+        if (!r.ok || !data.ok) {
+          list.textContent = 'Failed: ' + (data.detail || JSON.stringify(data));
+          return;
+        }
+        let rows = data.in_stock || [];
+        list.textContent = '';
+        if (!rows.length) {
+          const el = document.createElement('div');
+          el.textContent = `No in-stock zones for site: ${site}`;
+          list.appendChild(el);
+          return;
+        }
+        rows.forEach((p) => {
+          const el = document.createElement('div');
+          el.style.padding = '2px 0';
+          el.textContent = `${p.zone} — ${p.price} IDR — stock ${p.stock}`;
+          list.appendChild(el);
+        });
+        appendLog(`[+] Litensi: ${rows.length} in-stock zones for site ${site}`);
+      } catch (e) {
+        list.textContent = 'Error: ' + e;
+      }
+    }
+
+    async function testNineRouter() {
+      await saveConfig(true);
+      const result = $('nine_router_test_result');
+      result.textContent = 'Testing...';
+      result.style.color = 'var(--muted)';
+      try {
+        const r = await fetch('/api/nine-router/test', { method: 'POST', headers: headers() });
+        const data = await r.json();
+        const ok = r.ok && !!data.ok;
+        result.textContent = data.message || (ok ? 'OK' : 'Failed');
+        result.style.color = ok ? 'var(--ok)' : 'var(--bad)';
+        appendLog(`${ok ? '[+]' : '[!]'} 9router: ${result.textContent}`);
+      } catch (e) {
+        result.textContent = 'Error: ' + e;
+        result.style.color = 'var(--bad)';
+        appendLog('[!] 9router test error: ' + e);
+      }
+    }
+
+    function syncProxyMode() {
+      const mode = $('proxyMode').value;
+      if ($('proxyAirportBox')) $('proxyAirportBox').style.display = mode === 'airport' ? 'block' : 'none';
+      if ($('proxyCliproxyBox')) $('proxyCliproxyBox').style.display = mode === 'cliproxy_white' ? 'grid' : 'none';
+      if ($('proxyCustomBox')) $('proxyCustomBox').style.display = mode === 'custom' ? 'grid' : 'none';
+      if ($('proxyGroupBox')) $('proxyGroupBox').style.display = mode === 'whitelist' ? 'grid' : 'none';
+      updateProxyPreview();
+    }
+
+    function updateProxyPreview() {
+      const el = $('proxyPreview');
+      if (!el) return;
+      const mode = $('proxyMode').value;
+      if (mode === 'airport') {
+        el.textContent = ($('proxy_airport_url')?.value || 'http://127.0.0.1:7893').trim();
+        return;
+      }
+      if (mode === 'cliproxy_white') {
+        const base = ($('proxy_api_url').value || 'https://api.cliproxy.io/white/api').trim();
+        let region = ($('proxy_country').value || 'US').trim() || 'US';
+        if (region.toUpperCase() === 'RAND') region = 'Rand';
+        const time = String($('proxy_duration').value || '10').trim() || '10';
+        const num = String($('proxy_api_num').value || '1').trim() || '1';
+        const format = ($('proxy_api_format').value || 'n').trim() || 'n';
+        if (base.includes('?')) {
+          el.textContent = base;
+        } else {
+          el.textContent = `${base}?region=${encodeURIComponent(region)}&num=${encodeURIComponent(num)}&time=${encodeURIComponent(time)}&format=${encodeURIComponent(format)}&type=txt`;
+        }
+        return;
+      }
+      if (mode !== 'whitelist') {
+        el.textContent = mode === 'custom' ? (($('proxy')?.value || '').trim() || '—') : '—';
+        return;
+      }
+      const user = ($('proxy_user').value || '').trim();
+      const host = ($('proxy_host').value || '').trim();
+      const port = ($('proxy_port').value || '').trim();
+      const country = ($('proxy_country').value || 'US').trim().toUpperCase();
+      const delim = ($('proxy_delimiter').value || '-');
+      let duration = String($('proxy_duration').value || '10').trim();
+      duration = (duration.match(/\d+/) || ['10'])[0];
+      const session = ($('proxy_session').value || '').trim() || 'auto';
+      let tpl = ($('proxy_user_template').value || '{user}{delimiter}region{delimiter}{country}').trim();
+      let username = tpl
+        .replaceAll('{user}', user)
+        .replaceAll('{country}', country)
+        .replaceAll('{delimiter}', delim)
+        .replaceAll('{session}', session)
+        .replaceAll('{duration}', duration)
+        .replaceAll('{t}', `t-${duration}`)
+        .replaceAll('{host}', host)
+        .replaceAll('{port}', port);
+      if (!host || !port) {
+        el.textContent = 'Please fill in host and port';
+        return;
+      }
+      const auth = username ? `${username}:****@` : '';
+      el.textContent = `http://${auth}${host}:${port}`;
+    }
+
+    async function testCliproxyFetch() {
+      await saveConfig(true);
+      try {
+        const r = await fetch('/api/proxy/test', { method: 'POST', headers: headers(true), body: '{}' });
+        const data = await r.json();
+        (data.logs || []).forEach((line) => appendLog(line));
+        if (!r.ok || !data.ok) {
+          appendLog('[!] Fetch/quality check failed: ' + (data.detail || JSON.stringify(data)));
+          toast('Fetch failed');
+          return;
+        }
+        appendLog('[+] Testing proxy: ' + data.proxy);
+        if (data.quality) {
+          const q = data.quality;
+          appendLog(
+            `[*] IPPure: ip=${q.ip || ''} country=${q.countryCode || ''} fraud=${q.fraudScore} residential=${q.isResidential} org=${q.asOrganization || ''}`
+          );
+        }
+        toast('Qualified proxy: ' + data.proxy);
+      } catch (e) {
+        appendLog('[!] Proxy fetch error: ' + e);
+        toast('Fetch error');
+      }
+    }
+
+    async function tryAuth() {
+      const pass = $('loginPass').value.trim();
+      if (!pass) return;
+      try {
+        const r = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pass }),
+        });
+        const data = await r.json();
+        if (!data.ok) {
+          $('loginErr').textContent = 'Wrong password';
+          return;
+        }
+        if (data.needs_auth) {
+          authKey = data.token || pass;
+          localStorage.setItem(AUTH_KEY, authKey);
+        } else {
+          authKey = '';
+          localStorage.removeItem(AUTH_KEY);
+        }
+        $('loginOverlay').classList.add('hidden');
+        await boot();
+      } catch (e) {
+        $('loginErr').textContent = 'Connection failed';
+      }
+    }
+
+    async function ensureAuth() {
+      try {
+        const r = await fetch('/api/config', { headers: headers() });
+        if (r.status === 401 || r.status === 403) {
+          $('loginOverlay').classList.remove('hidden');
+          return false;
+        }
+        if (r.ok) {
+          $('loginOverlay').classList.add('hidden');
+          return true;
+        }
+      } catch (_) {}
+      try {
+        const r = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: '' }),
+        });
+        const data = await r.json();
+        if (data.ok && !data.needs_auth) {
+          $('loginOverlay').classList.add('hidden');
+          return true;
+        }
+      } catch (_) {}
+      $('loginOverlay').classList.remove('hidden');
+      return false;
+    }
+
+    function setVal(id, value) {
+      const el = $(id);
+      if (!el) return;
+      if (el.type === 'checkbox') el.checked = !!value;
+      else el.value = value == null ? '' : value;
+    }
+
+    function getCfgPayload() {
+      const mode = $('proxyMode').value;
+      const airportUrl = ($('proxy_airport_url')?.value || 'http://127.0.0.1:7893').trim() || 'http://127.0.0.1:7893';
+      const customProxy = ($('proxy')?.value || '').trim();
+      let proxy = customProxy;
+      if (mode === 'airport') proxy = airportUrl;
+      else if (mode === 'direct') proxy = '';
+      else if (mode === 'custom') proxy = customProxy;
+      const mail = {};
+      MAIL_PROVIDERS.forEach((p) => p.fields.forEach((f) => {
+        const el = $(f.id);
+        if (!el) return;
+         if (f.type === 'password') mail[f.id] = el.value;
+         else mail[f.id] = el.value.trim();
+      }));
+      return {
+        email_provider: $('email_provider').value,
+         ...mail,
+        proxy_mode: mode,
+        proxy,
+        proxy_airport_url: airportUrl,
+        proxy_api_url: ($('proxy_api_url')?.value || 'https://api.cliproxy.io/white/api').trim(),
+        proxy_api_num: parseInt($('proxy_api_num')?.value || '5', 10) || 5,
+        proxy_api_format: ($('proxy_api_format')?.value || 'n').trim(),
+        proxy_api_type: 'txt',
+        proxy_quality_api: ($('proxy_quality_api')?.value || 'https://my.ippure.com/v1/info').trim(),
+        // Quality forced ON; exit IPPure is authoritative for Cliproxy white.
+        proxy_quality_check: true,
+        proxy_check_entry_host: !!$('proxy_check_entry_host')?.checked,
+        proxy_check_exit_ippure: true,
+        proxy_entry_hard_reject: false,
+        proxy_max_fraud_score: parseInt($('proxy_max_fraud_score')?.value || '40', 10) || 40,
+        proxy_require_residential: !!$('proxy_require_residential')?.checked,
+        proxy_require_country_match: !!$('proxy_require_country_match')?.checked,
+        proxy_reject_datacenter_org: !!$('proxy_reject_datacenter_org')?.checked,
+        proxy_reject_hosting_flag: true,
+        proxy_quality_max_tries: parseInt($('proxy_quality_max_tries')?.value || '8', 10) || 8,
+        proxy_host: $('proxy_host')?.value.trim() || '',
+        proxy_port: $('proxy_port')?.value.trim() || '',
+        proxy_user: $('proxy_user')?.value.trim() || '',
+        proxy_pass: $('proxy_pass')?.value || '',
+        proxy_country: ($('proxy_country').value || 'US').trim(),
+        proxy_delimiter: ($('proxy_delimiter')?.value || '-'),
+        proxy_duration: String($('proxy_duration').value || '10').trim(),
+        proxy_user_template: ($('proxy_user_template')?.value || '{user}{delimiter}region{delimiter}{country}').trim(),
+        proxy_session: $('proxy_session')?.value.trim() || '',
+        enable_nsfw: $('enable_nsfw').checked,
+        nsfw_async: $('nsfw_async') ? $('nsfw_async').checked : true,
+        post_success_async: $('post_success_async') ? $('post_success_async').checked : true,
+        register_count: parseInt($('regCount').value, 10) || 1,
+        register_mode: ($('registerMode')?.value || 'browser'),
+        profile_given_names: ($('profile_given_names')?.value || '').trim(),
+        profile_family_names: ($('profile_family_names')?.value || '').trim(),
+        nine_router_enabled: !!$('nine_router_enabled')?.checked,
+        nine_router_base: ($('nine_router_base')?.value || '').trim(),
+        nine_router_password: ($('nine_router_password')?.value || ''),
+        nine_router_push_mode: ($('nine_router_push_mode')?.value || 'device'),
+      };
+    }
+
+    function formatCost(value) {
+      return 'IDR ' + Number(value || 0).toLocaleString('id-ID', { maximumFractionDigits: 2 });
+    }
+
+    async function loadConfig() {
+      const r = await fetch('/api/config', { headers: headers() });
+      if (!r.ok) throw new Error('Failed to load config');
+      const data = await r.json();
+      const c = data.config || {};
+      setProvider(c.email_provider || 'cloudflare');
+      MAIL_PROVIDERS.forEach((p) => p.fields.forEach((f) => {
+        setVal(f.id, c[f.id] || '');
+      }));
+      setVal('proxy', c.proxy || '');
+      setVal('proxy_airport_url', c.proxy_airport_url || c.proxy || 'http://127.0.0.1:7893');
+      setVal('proxy_api_url', c.proxy_api_url || 'https://api.cliproxy.io/white/api');
+      setVal('proxy_api_num', c.proxy_api_num || 5);
+      setVal('proxy_api_format', c.proxy_api_format || 'n');
+      setVal('proxy_quality_api', c.proxy_quality_api || 'https://my.ippure.com/v1/info');
+      setVal('proxy_quality_check', c.proxy_quality_check !== false);
+      setVal('proxy_check_entry_host', !!c.proxy_check_entry_host);
+      setVal('proxy_check_exit_ippure', c.proxy_check_exit_ippure !== false);
+      setVal('proxy_max_fraud_score', c.proxy_max_fraud_score != null ? c.proxy_max_fraud_score : 40);
+      setVal('proxy_require_residential', c.proxy_require_residential !== false);
+      setVal('proxy_require_country_match', c.proxy_require_country_match !== false);
+      setVal('proxy_reject_datacenter_org', c.proxy_reject_datacenter_org !== false);
+      setVal('proxy_quality_max_tries', c.proxy_quality_max_tries || 8);
+      setVal('proxy_host', c.proxy_host || '');
+      setVal('proxy_port', c.proxy_port || '');
+      setVal('proxy_user', c.proxy_user || '');
+      setVal('proxy_pass', c.proxy_pass || '');
+      setVal('proxy_country', c.proxy_country || 'US');
+      setVal('proxy_delimiter', c.proxy_delimiter != null && c.proxy_delimiter !== '' ? c.proxy_delimiter : '-');
+      setVal('proxy_duration', c.proxy_duration || '10');
+      setVal('proxy_user_template', c.proxy_user_template || '{user}{delimiter}region{delimiter}{country}');
+      setVal('proxy_session', c.proxy_session || '');
+      let mode = (c.proxy_mode || '').trim();
+      // legacy config: custom + 7893 treated as airport mode so the UI recognizes it
+      if (!mode) mode = 'airport';
+      if (mode === 'custom' && String(c.proxy || '').includes(':7893')) mode = 'airport';
+      if (!$('proxyMode').querySelector(`option[value="${mode}"]`)) {
+        const opt = document.createElement('option');
+        opt.value = mode;
+        opt.textContent = mode;
+        $('proxyMode').appendChild(opt);
+      }
+      $('proxyMode').value = mode;
+      // ensure country select has value even if custom code
+      const countrySel = $('proxy_country');
+      const country = (c.proxy_country || 'US').toUpperCase();
+      if (countrySel && ![...countrySel.options].some((o) => o.value === country)) {
+        const opt = document.createElement('option');
+        opt.value = country;
+        opt.textContent = country;
+        countrySel.appendChild(opt);
+      }
+      setVal('proxy_country', country);
+      syncProxyMode();
+      setVal('enable_nsfw', c.enable_nsfw !== false);
+      setVal('nsfw_async', c.nsfw_async !== false);
+      setVal('post_success_async', c.post_success_async !== false);
+      setVal('profile_given_names', c.profile_given_names || '');
+      setVal('profile_family_names', c.profile_family_names || '');
+      setVal('regCount', c.register_count || 1);
+      setVal('registerMode', (c.register_mode === 'hybrid' ? 'hybrid' : 'browser'));
+      setVal('nine_router_enabled', !!c.nine_router_enabled);
+      setVal('nine_router_base', c.nine_router_base || '');
+      setVal('nine_router_password', c.nine_router_password || '');
+      setVal('nine_router_push_mode', c.nine_router_push_mode || 'device');
+      appendLog('[*] Config loaded');
+    }
+
+    async function saveConfig(silent = false) {
+      const r = await fetch('/api/config', {
+        method: 'PUT',
+        headers: headers(true),
+        body: JSON.stringify(getCfgPayload()),
+      });
+      if (!r.ok) {
+        const t = await r.text();
+        appendLog('[!] Failed to save config: ' + t);
+        toast('Failed to save config');
+        return false;
+      }
+      if (!silent) {
+        appendLog('[+] Config saved');
+        toast('Config saved');
+      }
+      return true;
+    }
+
+    async function refreshStatus() {
+      try {
+        const r = await fetch('/api/status', { headers: headers() });
+        if (!r.ok) return;
+        const s = await r.json();
+        running = !!s.running;
+        $('mSuccess').textContent = s.success ?? 0;
+        $('mFail').textContent = s.fail ?? 0;
+       $('mTarget').textContent = s.target ?? 0;
+        $('mCost').textContent = formatCost(s.email_total_cost);
+        $('mUnitCost').textContent = formatCost(s.email_unit_price) + ' / email';
+        $('mState').textContent = running ? 'Running' : 'Idle';
+        $('runDot').className = 'dot ' + (running ? 'run' : 'idle');
+        $('runLabel').textContent = running ? 'Running' : 'Stopped';
+        $('startBtn').disabled = running;
+        if (s.last_accounts_file) {
+          const name = s.last_accounts_file.split(/[\\/]/).pop();
+          $('lastFile').textContent = 'Account file: ' + name;
+        }
+      } catch (_) {}
+    }
+
+    async function pollLogs() {
+      try {
+        const r = await fetch('/api/logs/snapshot?limit=300', { headers: headers() });
+        if (!r.ok) return;
+        const data = await r.json();
+        (data.lines || []).forEach(appendLog);
+      } catch (_) {}
+    }
+
+    async function startJob() {
+      const count = parseInt($('regCount').value, 10) || 1;
+      if (!confirm('Config will be saved first. Start the registration task?')) return;
+      const ok = await saveConfig(true);
+      if (!ok) return;
+      const r = await fetch('/api/start', {
+        method: 'POST',
+        headers: headers(true),
+        body: JSON.stringify({ count }),
+      });
+      const text = await r.text();
+      if (!r.ok) {
+        appendLog('[!] Start failed: ' + text);
+        toast('Start failed');
+        return;
+      }
+      appendLog('[*] Registration started, count=' + count);
+      toast('Registration started');
+      refreshStatus();
+    }
+
+    async function stopJob() {
+      if (!confirm('Request to stop the current registration task?')) return;
+      const r = await fetch('/api/stop', { method: 'POST', headers: headers() });
+      if (!r.ok) {
+        appendLog('[!] Stop failed: ' + (await r.text()));
+        toast('Stop failed');
+        return;
+      }
+      appendLog('[!] Stop requested for registration task');
+      toast('Stop requested');
+      refreshStatus();
+    }
+
+    async function downloadAccounts() {
+      const r = await fetch('/api/accounts/download', { headers: headers() });
+      if (!r.ok) {
+        toast('No account files yet');
+        return;
+      }
+      const blob = await r.blob();
+      const cd = r.headers.get('content-disposition') || '';
+      const m = /filename="?([^";]+)"?/.exec(cd);
+      const name = m ? m[1] : 'accounts.txt';
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    async function listAccountFiles() {
+      const r = await fetch('/api/accounts', { headers: headers() });
+      if (!r.ok) return;
+      const data = await r.json();
+      const files = data.files || [];
+      if (!files.length) {
+        appendLog('[*] No accounts_*.txt yet');
+        toast('No account files');
+        return;
+      }
+      appendLog('[*] Account files:');
+      files.slice(0, 10).forEach((f) => appendLog(`    ${f.name}  (${f.size} bytes)`));
+    }
+
+    async function boot() {
+      await loadConfig();
+      await refreshStatus();
+      await pollLogs();
+      if (pollTimer) clearInterval(pollTimer);
+      if (logTimer) clearInterval(logTimer);
+      pollTimer = setInterval(refreshStatus, 2000);
+      logTimer = setInterval(pollLogs, 1500);
+    }
+
+    function applyTheme(theme) {
+      document.documentElement.dataset.theme = theme;
+      localStorage.setItem('grok_reg_theme', theme);
+      $('themeBtn').textContent = theme === 'light' ? '☾' : '☼';
+    }
+
+    // embed under admin iframe (same top nav as accounts/config)
+    if (new URLSearchParams(location.search).get('embed') === '1') {
+      document.body.classList.add('embed-mode');
+      document.title = 'Register Console';
+      // Avoid a second "Register Console" chrome when already inside admin shell
+      try {
+        const brand = document.querySelector('.login-brand');
+        if (brand) brand.textContent = 'Grok Register';
+        const h1 = document.querySelector('.login-card h1');
+        if (h1) h1.textContent = 'Register Console';
+        const p = document.querySelector('.login-card p');
+        if (p) p.textContent = 'If already logged into the admin, usually no input needed';
+      } catch {}
+    }
+
+    // API base when proxied under /reg/
+    // fetch('/api/...') works when page is served from same path root
+    // If under /reg/, relative /api would hit another service — need rewrite
+    (function fixApiBase() {
+      const p = location.pathname;
+      if (p.startsWith('/reg')) {
+        const prefix = p.endsWith('/') ? p.slice(0, -1) : p.replace(/\/[^/]*$/, '');
+        // when url is /reg/ or /reg/?embed=1, prefix should be /reg
+        const base = p === '/reg' || p === '/reg/' || p.startsWith('/reg/?') || p.startsWith('/reg?')
+          ? '/reg'
+          : (p.startsWith('/reg/') ? '/reg' : '');
+        if (base) {
+          const origFetch = window.fetch.bind(window);
+          window.fetch = (input, init) => {
+            if (typeof input === 'string' && input.startsWith('/api/')) {
+              return origFetch(base + input, init);
+            }
+            return origFetch(input, init);
+          };
+        }
+      }
+    })();
+
+    renderMailProviders();
+    applyTheme(localStorage.getItem('grok_reg_theme') || 'dark');
+    $('themeBtn').addEventListener('click', () => {
+      applyTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light');
+    });
+    $('proxyMode').addEventListener('change', syncProxyMode);
+    $('proxy_airport_url')?.addEventListener('input', updateProxyPreview);
+    $('testProxyBtnAirport')?.addEventListener('click', testCliproxyFetch);
+    ['proxy_api_url','proxy_api_num','proxy_api_format','proxy_host','proxy_port','proxy_user','proxy_pass','proxy_country','proxy_delimiter','proxy_duration','proxy_user_template','proxy_session']
+      .forEach((id) => $(id)?.addEventListener('input', updateProxyPreview));
+    $('proxy_country')?.addEventListener('change', updateProxyPreview);
+    $('proxy_api_format')?.addEventListener('change', updateProxyPreview);
+    $('testProxyBtn')?.addEventListener('click', testCliproxyFetch);
+    $('loginBtn').addEventListener('click', tryAuth);
+    $('loginPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') tryAuth(); });
+    $('saveBtn').addEventListener('click', () => saveConfig(false));
+    $('startBtn').addEventListener('click', startJob);
+    $('stopBtn').addEventListener('click', stopJob);
+    $('clearLogBtn').addEventListener('click', () => {
+      $('term').innerHTML = '';
+      knownLogLines = new Set();
+    });
+    $('dlBtn').addEventListener('click', downloadAccounts);
+    $('listBtn').addEventListener('click', listAccountFiles);
+
+    (async () => {
+      const ok = await ensureAuth();
+      if (ok) await boot();
+    })();
+  </script>
+</body>
+</html>

@@ -4,7 +4,7 @@ import { getAmmailOtp, markAmmailOtpUsed, deleteAmmailOtp } from "@/lib/db/index
 
 export const dynamic = "force-dynamic";
 
-export async function GET_handler(req, res, { params }) {
+export async function GET(req, { params }) {
   try {
     const resolvedParams = await params;
     const otpId = parseInt(resolvedParams.id);
@@ -42,7 +42,7 @@ export async function GET_handler(req, res, { params }) {
   }
 }
 
-export async function POST_handler(req, res, { params }) {
+export async function POST(req, { params }) {
   try {
     const resolvedParams = await params;
     const otpId = parseInt(resolvedParams.id);

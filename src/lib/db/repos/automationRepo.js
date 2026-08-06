@@ -83,6 +83,11 @@ export async function markCodeBuddySuccess(id, apiKey) {
   db.run("UPDATE codebuddyAccounts SET apiKeyStatus = 'ready', apiKey = ?, lastError = '' WHERE id = ?", [apiKey, id]);
 }
 
+export async function updateCodeBuddyAccountEmail(id, email) {
+  const db = await getAdapter();
+  db.run("UPDATE codebuddyAccounts SET email = ? WHERE id = ?", [email, id]);
+}
+
 export async function markCodeBuddyError(id, lastError) {
   const db = await getAdapter();
   db.run("UPDATE codebuddyAccounts SET apiKeyStatus = 'failed', lastError = ? WHERE id = ?", [lastError, id]);

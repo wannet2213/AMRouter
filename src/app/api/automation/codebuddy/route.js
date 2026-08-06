@@ -542,6 +542,21 @@ export async function POST(req) {
             connData.authType = "cookie";
             connData.cookie = acc.apiKey;
             delete connData.apiKey;
+          } else if (provider === "grok") {
+            // Grok: prefer grok-cli (Grok Build) OAuth; fallback grok-web cookie
+            const isOidc = acc.apiKey && acc.apiKey.length > 100 && acc.apiKey.includes(".");
+            if (isOidc) {
+              connData.provider = "grok-cli";
+              connData.authType = "oauth";
+              connData.accessToken = acc.apiKey;
+              connData.refreshToken = acc.apiKey; // placeholder — real refresh from state
+              delete connData.apiKey;
+            } else {
+              connData.provider = "grok-web";
+              connData.authType = "cookie";
+              connData.cookie = acc.apiKey;
+              delete connData.apiKey;
+            }
           } else if (provider === "kimi-coding") {
             connData.authType = "oauth";
             connData.accessToken = acc.apiKey;
@@ -662,6 +677,7 @@ function executeCodeBuddySignup(accountId, jobId, idx, settings) {
       const isQoder = account.provider === "qoder";
       const isCloudflare = account.provider === "cloudflare";
       const isOpenRouter = account.provider === "openrouter";
+      const isGrok = account.provider === "grok";
 
       // ── Cloudflare: Smart routing ─────────────────────────────────────
       // password == GAK (>=37 char or cfk_ prefix) → API-based, no browser
@@ -817,8 +833,12 @@ function executeCodeBuddySignup(accountId, jobId, idx, settings) {
         return reject(new Error("Leonardo invite link belum di-set di Settings."));
       }
 
-      const venvPython = path.resolve(process.cwd(), ".venv/bin/python");
-      const scriptPath = isLeonardo 
+      const venvPython = isGrok
+        ? path.resolve(process.cwd(), "grok-regkit/.venv/bin/python")
+        : path.resolve(process.cwd(), ".venv/bin/python");
+      const scriptPath = isGrok
+        ? path.resolve(process.cwd(), "grok-regkit/run_grok.py")
+        : isLeonardo 
         ? path.resolve(process.cwd(), "src/automation/leonardo_signup.py")
         : isWeavy
         ? path.resolve(process.cwd(), "src/automation/weavy_signup.py")
@@ -850,7 +870,26 @@ function executeCodeBuddySignup(accountId, jobId, idx, settings) {
         `--profiles-dir=${profilesDir}`,
       ];
 
-      if (isLeonardo) {
+      if (isGrok) {
+        // Grok registration via grok-regkit/run_grok.py wrapper
+        const grokStateDir = path.join(process.env.DATA_DIR || path.join(process.env.HOME || "/tmp", ".amrouter"), "grok");
+        args.length = 0; // rebuild args for grok wrapper
+        args.push(
+          scriptPath,
+          "--job-id", `acc-${account.id}`,
+          "--count", "1",
+          "--mode", "browser",
+          "--state-dir", grokStateDir,
+        );
+        // Use Ammail as email provider
+        const ammailSettings = settings;
+        const ammailBaseUrl = ammailSettings.ammail_base_url || "";
+        const ammailApiKey = ammailSettings.ammail_api_key || "";
+        if (ammailBaseUrl && ammailApiKey) {
+          args.push("--email-base", ammailBaseUrl);
+          args.push("--email-key", ammailApiKey);
+        }
+      } else if (isLeonardo) {
         args.push(`--invite-link=${settings.leonardo_invite_link || ""}`);
         args.push(`--signup-method=${account.signupMethod || "google"}`);
         if (account.canvaEnrolled === 1) {
@@ -919,8 +958,8 @@ function executeCodeBuddySignup(accountId, jobId, idx, settings) {
 
       // OpenRouter: run HEADED (not headless) — Cloudflare Turnstile only
       // triggers in headless automation; a real/headed browser passes cleanly
-      // without needing a 2Captcha key.
-      if (settings.codebuddy_browser_headless !== "0" && !isOpenRouter) {
+      // without needing a 2Captcha key. Grok: also headed (DrissionPage needs it).
+      if (settings.codebuddy_browser_headless !== "0" && !isOpenRouter && !isGrok) {
         args.push("--headless");
       }
 
@@ -967,6 +1006,9 @@ function executeCodeBuddySignup(accountId, jobId, idx, settings) {
       // so we drop XAUTHORITY and let xhost handle display access (this survives
       // the `deb` user's X session restarts, unlike a stale cookie file).
       const childEnv = { ...process.env, DISPLAY: ":0" };
+      if (isGrok) {
+        childEnv.GROK_REGISTER_BROWSER_PATH = "/usr/bin/chromium";
+      }
       delete childEnv.XAUTHORITY;
       const child = spawn(venvPython, args, {
         env: childEnv
@@ -988,6 +1030,21 @@ function executeCodeBuddySignup(accountId, jobId, idx, settings) {
           if (!line.trim()) continue;
           try {
             const parsed = JSON.parse(line);
+            if (isGrok && (parsed.status === "done" || parsed.status === "stopped" || parsed.status === "error")) {
+              // Grok wrapper final result — handle after close (state file has details)
+              if (parsed.status === "error") {
+                done = true;
+                const errMsg = parsed.error || "Grok registration error";
+                await markCodeBuddyError(account.id, errMsg);
+                await updateCodeBuddyJobResult(jobId, idx, {
+                  email: account.email,
+                  status: "failed",
+                  error: errMsg,
+                  ok: false
+                });
+              }
+              continue;
+            }
             if (parsed.step) {
               lastStep = parsed.step;
               await updateCodeBuddyJobResult(jobId, idx, {
@@ -1109,19 +1166,135 @@ function executeCodeBuddySignup(accountId, jobId, idx, settings) {
           global._codebuddyState.activeProcesses.delete(child);
         }
         if (!done) {
-          let errMsg = global._codebuddyState.stopFlag 
-            ? "Dihentikan oleh pengguna." 
-            : `Proses terhenti dengan exit code ${code}.`;
-          if (stderrAccumulator.trim()) {
-            errMsg += ` | Stderr: ${stderrAccumulator.trim()}`;
+          // Grok: read result from state file (run_grok.py writes JSON state)
+          if (isGrok) {
+            try {
+              const grokStateDir = path.join(process.env.DATA_DIR || path.join(process.env.HOME || "/tmp", ".amrouter"), "grok");
+              const stateFile = path.join(grokStateDir, `grok_acc-${account.id}.state.json`);
+              if (fs.existsSync(stateFile)) {
+                const state = JSON.parse(fs.readFileSync(stateFile, "utf-8"));
+                if (state.status === "done" || state.status === "stopped") {
+                  const successCount = parseInt(state.success, 10) || 0;
+                  if (successCount > 0) {
+                    // Read accounts file for SSO cookie — match against the REAL
+                    // generated email (state.email), not the placeholder account.email
+                    let sso = "";
+                    let savedPassword = account.password || "";
+                    const realEmail = state.email || account.email;
+                    if (state.accounts_file && fs.existsSync(state.accounts_file)) {
+                      const line = fs.readFileSync(state.accounts_file, "utf-8").split("\n").find(l => l.includes(realEmail));
+                      if (line) {
+                        const parts = line.split("----");
+                        if (parts.length >= 3) {
+                          savedPassword = parts[1];
+                          sso = parts.slice(2).join("----").trim();
+                        }
+                      }
+                    }
+                    done = true;
+                    await markCodeBuddySuccess(account.id, sso || savedPassword);
+                    // Update account email to the real generated one (grok generates its own mailbox)
+                    try {
+                      const stateEmail = state.email || "";
+                      if (stateEmail && stateEmail !== account.email) {
+                        const { updateCodeBuddyAccountEmail } = await import("@/lib/db/repos/automationRepo.js");
+                        await updateCodeBuddyAccountEmail(account.id, stateEmail);
+                        console.log(`[grok] account ${account.id} email updated: ${account.email} -> ${stateEmail}`);
+                      }
+                    } catch (e) {
+                      console.error("[grok] failed to update account email:", e);
+                    }
+                    await updateCodeBuddyJobResult(jobId, idx, {
+                      email: account.email,
+                      status: "done",
+                      api_key: sso || savedPassword,
+                      ok: true
+                    });
+                    // Auto-add to 9router as grok-cli (Grok Build) OAuth connection when OIDC available
+                    try {
+                      if (state.oidc && state.oidc.access_token && state.oidc.refresh_token) {
+                        const connData = {
+                          provider: "grok-cli",
+                          authType: "oauth",
+                          accessToken: state.oidc.access_token,
+                          refreshToken: state.oidc.refresh_token,
+                          expiresIn: state.oidc.expires_in || 21600,
+                          expiresAt: new Date(Date.now() + (state.oidc.expires_in || 21600) * 1000).toISOString(),
+                          idToken: "",
+                          name: account.email,
+                          email: account.email,
+                          priority: 1,
+                          isActive: true,
+                          testStatus: "active",
+                          providerSpecificData: {
+                            deviceId: state.oidc.sub || "",
+                            connectionProxyEnabled: false,
+                            connectionProxyUrl: "",
+                            connectionNoProxy: true,
+                          },
+                        };
+                        await createProviderConnection(connData);
+                        console.log(`[grok] account ${account.email} added to 9router as grok-cli (Grok Build)`);
+                      } else {
+                        // Fallback: grok-web cookie connection
+                        const connData = {
+                          provider: "grok-web",
+                          authType: "cookie",
+                          cookie: sso,
+                          name: account.email,
+                          email: account.email,
+                          priority: 1,
+                          isActive: true,
+                          testStatus: "active",
+                        };
+                        await createProviderConnection(connData);
+                        console.log(`[grok] account ${account.email} added to 9router as grok-web (no OIDC)`);
+                      }
+                    } catch (e) {
+                      console.error("[grok] auto-add to 9router failed:", e);
+                    }
+                  } else {
+                    done = true;
+                    const errMsg = state.error || "Grok registration failed";
+                    await markCodeBuddyError(account.id, errMsg);
+                    await updateCodeBuddyJobResult(jobId, idx, {
+                      email: account.email,
+                      status: "failed",
+                      error: errMsg,
+                      ok: false
+                    });
+                  }
+                } else if (state.status === "error") {
+                  done = true;
+                  const errMsg = state.error || "Grok registration error";
+                  await markCodeBuddyError(account.id, errMsg);
+                  await updateCodeBuddyJobResult(jobId, idx, {
+                    email: account.email,
+                    status: "failed",
+                    error: errMsg,
+                    ok: false
+                  });
+                }
+              }
+            } catch (e) {
+              console.error("[grok] failed to read state file:", e);
+            }
           }
-          await markCodeBuddyError(account.id, errMsg);
-          await updateCodeBuddyJobResult(jobId, idx, {
-            email: account.email,
-            status: "failed",
-            error: errMsg,
-            ok: false
-          });
+          if (!done) {
+            let errMsg = global._codebuddyState.stopFlag 
+              ? "Dihentikan oleh pengguna." 
+              : `Proses terhenti dengan exit code ${code}.`;
+            if (stderrAccumulator.trim()) {
+              errMsg += ` | Stderr: ${stderrAccumulator.trim()}`;
+            }
+            await markCodeBuddyError(account.id, errMsg);
+            await updateCodeBuddyJobResult(jobId, idx, {
+              email: account.email,
+              status: "failed",
+              error: errMsg,
+              ok: false
+            });
+          }
         }
         resolve();
       });
