@@ -11,7 +11,7 @@ export {
 export {
   getProviderConnections, getProviderConnectionById,
   createProviderConnection, updateProviderConnection,
-  deleteProviderConnection, deleteProviderConnectionsByProvider,
+  deleteProviderConnection, deleteProviderConnectionsByProvider, deleteProviderConnectionByEmailAndProvider,
   reorderProviderConnections, cleanupProviderConnections,
 } from "./repos/connectionsRepo.js";
 
@@ -66,6 +66,16 @@ export {
 export {
   saveRequestDetail, getRequestDetails, getRequestDetailById, getDistinctProviders,
 } from "./repos/requestDetailsRepo.js";
+
+// Automation (ported from AMRouter fork)
+export {
+  listCodeBuddyAccounts, getCodeBuddyAccount, insertCodeBuddyAccount,
+  bulkDeleteCodeBuddyAccounts, deleteCodeBuddyAccount,
+  markCodeBuddyRunning, markCodeBuddySuccess, markCodeBuddyError, markCanvaEnrolled,
+  createCodeBuddyJob, getCodeBuddyJob, updateCodeBuddyJobStatus, updateCodeBuddyJobResult,
+  insertAmmailOtp, findLatestAmmailOtp, markAmmailOtpUsed,
+  listAmmailOtps, getAmmailOtp, deleteAmmailOtp, deleteAmmailOtpsBulk,
+} from "./repos/automationRepo.js";
 
 // Export/import full DB
 export async function exportDb() {

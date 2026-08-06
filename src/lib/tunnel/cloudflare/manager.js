@@ -3,7 +3,7 @@ import { spawnQuickTunnel, killCloudflared, isCloudflaredRunning, setUnexpectedE
 import { clearPid } from "./pid.js";
 import { waitForHealth, probeUrlAlive } from "./healthCheck.js";
 import { WORKER_URL } from "./config.js";
-import { getSettings, updateSettings } from "@/lib/localDb";
+import { getSettings, updateSettings } from "../../../lib/localDb.js";
 
 const svc = {
   cancelToken: { cancelled: false },
@@ -31,7 +31,7 @@ function throwIfCancelled(token) {
   if (token.cancelled) throw new Error("tunnel cancelled");
 }
 
-export async function enableTunnel(localPort = 20128) {
+export async function enableTunnel(localPort = Number(process.env.PORT) || 3001) {
   console.log(`[Tunnel] enable start (port=${localPort})`);
   svc.cancelToken = { cancelled: false };
   svc.activeLocalPort = localPort;

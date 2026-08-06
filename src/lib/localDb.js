@@ -18,4 +18,11 @@ export {
   getMitmAlias, setMitmAliasAll,
   getPricing, getPricingForModel, updatePricing, resetPricing, resetAllPricing,
   exportDb, importDb,
+  // Automation (ported from AMRouter fork)
+  listCodeBuddyAccounts, getCodeBuddyAccount, insertCodeBuddyAccount,
+  bulkDeleteCodeBuddyAccounts, deleteCodeBuddyAccount,
+  markCodeBuddyRunning, markCodeBuddySuccess, markCodeBuddyError, markCanvaEnrolled,
+  createCodeBuddyJob, getCodeBuddyJob, updateCodeBuddyJobStatus, updateCodeBuddyJobResult,
+  insertAmmailOtp, findLatestAmmailOtp, markAmmailOtpUsed,
+  listAmmailOtps, getAmmailOtp, deleteAmmailOtp, deleteAmmailOtpsBulk,
 } from "@/lib/db/index.js";

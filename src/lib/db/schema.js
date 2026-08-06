@@ -3,7 +3,7 @@
 // pre-change safety backup in migrate.js: when the stored version is lower,
 // one lightweight DB backup is taken before applying schema changes. Forgetting
 // to bump only skips that backup — it does NOT break the additive auto-sync.
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const PRAGMA_SQL = `
 PRAGMA journal_mode = WAL;
@@ -152,10 +152,66 @@ export const TABLES = {
       "CREATE INDEX IF NOT EXISTS idx_rd_conn ON requestDetails(connectionId)",
     ],
   },
+  // ─── AMRouter automation tables (ported from the AMRouter fork) ───
+  codebuddyAccounts: {
+    columns: {
+      id: "INTEGER PRIMARY KEY AUTOINCREMENT",
+      email: "TEXT NOT NULL",
+      password: "TEXT NOT NULL",
+      profileDir: "TEXT",
+      ammailAlias: "TEXT",
+      signupMethod: "TEXT DEFAULT 'google'",
+      apiKey: "TEXT",
+      apiKeyStatus: "TEXT DEFAULT 'pending'",
+      lastError: "TEXT",
+      lastRunAt: "INTEGER",
+      createdAt: "TEXT NOT NULL",
+      provider: "TEXT DEFAULT 'codebuddy'",
+      canvaEnrolled: "INTEGER DEFAULT 0",
+    },
+    unique: "(email, provider)",
+    indexes: ["CREATE INDEX IF NOT EXISTS idx_cba_email ON codebuddyAccounts(email)"],
+  },
+  codebuddyJobs: {
+    columns: {
+      id: "TEXT PRIMARY KEY",
+      type: "TEXT",
+      status: "TEXT",
+      count: "INTEGER",
+      completed: "INTEGER",
+      success: "INTEGER",
+      failed: "INTEGER",
+      progress: "TEXT",
+      resultsJson: "TEXT",
+      createdAt: "TEXT",
+      startedAt: "INTEGER",
+      finishedAt: "INTEGER",
+    },
+  },
+  ammailOtps: {
+    columns: {
+      id: "INTEGER PRIMARY KEY AUTOINCREMENT",
+      address: "TEXT",
+      alias: "TEXT",
+      domain: "TEXT",
+      sender: "TEXT",
+      subject: "TEXT",
+      otpCode: "TEXT",
+      verifyUrl: "TEXT",
+      bodyText: "TEXT",
+      bodyHtml: "TEXT",
+      messageShortId: "TEXT",
+      rawEventJson: "TEXT",
+      receivedAt: "INTEGER",
+      usedAt: "INTEGER",
+    },
+    indexes: ["CREATE INDEX IF NOT EXISTS idx_ao_address ON ammailOtps(address)"],
+  },
 };
 
 export function buildCreateTableSql(name, def) {
   const cols = Object.entries(def.columns).map(([k, v]) => `${k} ${v}`);
   if (def.primaryKey) cols.push(def.primaryKey);
+  if (def.unique) cols.push(`UNIQUE ${def.unique}`);
   return `CREATE TABLE IF NOT EXISTS ${name} (${cols.join(", ")})`;
 }
